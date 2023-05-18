@@ -1,0 +1,13 @@
+{
+    "type": "postgres",
+    "user": "postgres",
+    "password": "m1s2f3senna",
+    "host": "localhost",
+    "port": 5432,
+    "database": "testeMHR",
+    "migrations" : [
+        "./src/app/database/migrations/*.js"
+    ]
+
+
+}
