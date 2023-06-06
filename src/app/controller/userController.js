@@ -25,8 +25,8 @@ const verifyJWT = (req, res, next) => {
 router.post('/cadastro', async (req, res) => {
   const user = req.body;
   const hashedPassword = await bcrypt.hash(user.senha, 10)
-  const selectQuery = `SELECT email FROM usuarios WHERE email = '${user.email}'`
-  const insertQuery = `insert into usuarios(nome, email, senha) values ('${user.nome}', '${user.email}', '${hashedPassword}')`
+  const selectQuery = `SELECT email FROM usuarios WHERE email = lower('${user.email}')`
+  const insertQuery = `insert into usuarios(nome, email, senha) values (lower('${user.nome}'), lower('${user.email}'), '${hashedPassword}')`
 
   client.query(selectQuery, (err, result) => {
     if (!err) {
@@ -58,7 +58,7 @@ router.post('/login', (req, res) => {
   ON ug.id_usuario = u.id
   INNER JOIN grupos g
   ON g.id = ug.id_grupo
-  WHERE u.email = '${user.email}';`;
+  WHERE u.email = '${user.email}' AND u.excluido = 0`;
 
   client.query(selectQuery, async (err, result) => {
     if (!err) {
@@ -71,13 +71,13 @@ router.post('/login', (req, res) => {
         if (isValidPassword) {
           res.json({ status: isValidPassword, usuario: result.rows, token });
         } else {
-          res.status(404).end()
+          res.json({status: false, message: 'Senha incorreta!'})
         }
       } else {
-        res.status(401).json({ status: false, message: 'Não foi encontrado nenhum usuário com este email' })
+        res.json({ status: false, message: 'Não foi encontrado nenhum usuário com este email' })
       }
     } else {
-      res.status(401).json({ status: false, message: 'SQL incorreto', debug: err.message })
+      res.status(400).json({ status: false, message: 'SQL incorreto', debug: err.message })
     }
   });
   client.end;

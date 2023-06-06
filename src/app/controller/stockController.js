@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const pdf = require('html-pdf')
 const ejs = require('ejs')
+const fs = require('fs')
 require('dotenv').config()
 
 
@@ -63,18 +64,17 @@ router.put('/:id', (req, res) => {
     let query;
 
     if (controle) {
-        if (controle.operacao) {
+        if (controle.operacao == 2) {
             query = `UPDATE produtos set quantidade = quantidade + 1 WHERE "codigoSKU" = ${controle.id}`
         } else {
             query = `UPDATE produtos set quantidade = quantidade - 1 WHERE "codigoSKU" = ${controle.id}`
         }
         const postQuery = `INSERT INTO "controleEstoque" (id_produto, operacao, quantidade, id_usuario) VALUES ('${controle.id}', ${controle.operacao}, (SELECT quantidade FROM produtos WHERE "codigoSKU" = ${controle.id})  , ${controle.usuario.id})`
         client.query(query, (err, result) => {
-            console.log(postQuery)
+            
             if (!err) {
                 client.query(postQuery, (err, result) => {
                     if (!err) {
-                        console.log(result.rows)
                         res.json({ status: true, message: 'Operação concluida com sucesso!' })
                     } else {
                         res.send(err).status(404)
@@ -174,5 +174,21 @@ router.get('/relatorio', (req, res) => {
     });
 })
 
+
+router.get('/download', (req, res) => {
+    const filePath = './views/estoque/estoque.pdf';
+
+    fs.readFile(filePath, (err, file) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).send('Could not download file');
+        }
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="estoque.pdf"');
+
+        res.send(file);
+    });
+});
 
 module.exports = router

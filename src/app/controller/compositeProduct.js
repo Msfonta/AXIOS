@@ -29,8 +29,7 @@ router.get('/', (req, res) => {
 })
 
 router.get('/:id', (req, res) => {
-    console.log('aquiii')
-    const selectQuery = `SELECT id, nome, perm_usuarios, perm_produtos, perm_dashboard, perm_grupos, perm_grupos, excluido FROM grupos WHERE id = ${req.params.id} WHERE excluido = 0`
+    const selectQuery = `SELECT id, id_prodsimples, "codigoSKU", quantidade FROM "produtoComposto" WHERE "codigoSKU" = ${req.params.id} `
 
     client.query(selectQuery, (err, result) => {
         if (!err) {
@@ -71,15 +70,28 @@ router.put('/:id', (req, res) => {
 })
 
 router.put('/delete/:id', (req, res) => {
-    const deleteQuery = `UPDATE categorias set excluido = 1, "dataExclusao" = now() WHERE id = ${req.params.id}`
+    const composto = req.body
+    const quantidadeQuery = `Select quantidade from composto where id = ${req.params.id}`
 
-    client.query(deleteQuery, (err, result) => {
+    client.query(quantidadeQuery, (err, result) => {
         if (!err) {
-            res.json({ status: true, message: 'Grupo excluido com sucesso!' })
+            if (result.rows[0].quantidade == 0) {
+                res.json({ status: false, message: 'Não foi possível excluir este produto pois o mesmo não encontra-se zerado no estoque! Favor zerar ele antes de qualquer operação!' })
+            } else {
+                const deleteProdutoQuery = `UPDATE produto_composto set excluido = 1 WHERE id_produto = ${req.params.id}`
+                client.query(deleteProdutoQuery, (error, resultado) => {
+                    if (!error) {
+                        res.json({ status: true, message: 'Produto excluído com sucesso!' })
+                    } else {
+                        res.json({ status: false, message: 'Erro ao excluir o produto!', debug: error.message })
+                    }
+                })
+            }
         } else {
-            res.status(404).end()
+            res.json({status: false, message: 'Erro no operação', debug: err.message})
         }
     })
+
 })
 
 

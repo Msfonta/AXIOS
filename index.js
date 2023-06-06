@@ -8,6 +8,7 @@ const productsController = require('./src/app/controller/productsController')
 const groupController = require('./src/app/controller/groupController')
 const categoryController = require('./src/app/controller/categoryController')
 const stockController = require('./src/app/controller/stockController')
+const compositeProduct = require('./src/app/controller/compositeProduct')
 
 app.use(cors())
 app.use(bodyParser.json())
@@ -23,4 +24,5 @@ app.use('/produto', productsController)
 app.use('/grupo', groupController)
 app.use('/categoria', categoryController)
 app.use('/estoque', stockController)
+app.use('/composto', compositeProduct)
 
