@@ -22,7 +22,7 @@ const verifyJWT = (req, res, next) => {
 }
 
 router.get('/composto/:id', (req, res) => {
-  const selectQuery = `SELECT p.nome, p."codigoSKU", p.id idproduto, c.quantidade, c.id FROM produto_composto pc inner join produtos p on p.id = pc.id_produto inner join composto c on c.id = pc.id_composto where pc.id_composto = ${req.params.id}`
+  const selectQuery = `SELECT p.nome, p."codigoSKU", p.id idproduto, pc.quantidade, c.id FROM produto_composto pc inner join produtos p on p.id = pc.id_produto inner join composto c on c.id = pc.id_composto where pc.id_composto = ${req.params.id}`
 
   client.query(selectQuery, (err, result) => {
     if (!err) {
@@ -35,17 +35,16 @@ router.get('/composto/:id', (req, res) => {
 
 
 router.post('/cadastro', async (req, res) => {
-  const produto = req.body;
+  const produto = req.body.produto;
   const selectQuery = `Select "codigoSKU" from composto where "codigoSKU" = ${produto.codigoSKU}`
-
+  console.log(selectQuery)
   client.query(selectQuery, (error, result) => {
     if (!error) {
-      if (result.rows) {
+      if (result.rows[0]) {
         res.json({ status: false, message: 'Já existe cadastro com este código!' })
       } else {
         const insertQuery = `insert into produtos(nome, "codigoSKU", "dtValidade", quantidade, "pesoLiquido", "pesoBruto", marca, categoria_id, pcomposto) 
         values ('${produto.nome}', ${produto.codigoSKU}, '${produto.dtValidade}', ${produto.quantidade},  ${produto.pesoLiquido}, ${produto.pesoBruto}, '${produto.marca}', ${produto.categoria_id}, 0)`
-
         client.query(insertQuery, (err, result) => {
           if (!err) {
             res.json({ status: true })
@@ -60,43 +59,56 @@ router.post('/cadastro', async (req, res) => {
 })
 
 router.post('/cadastrocomposto', (req, res) => {
-  const composto = req.body;
+  let possuiDuplicatas = false;
+  const composto = req.body.composto;
   console.log(composto)
-  const selectQuery = `Select "codigoSKU" from composto where "codigoSKU" = ${composto.codigoSKU}`
 
-  client.query(selectQuery, (er, resu) => {
-    if (!er) {
-      if (resu.rowCount) {
-        console.log(resu.rowCount)
+  for (let i = 0; i < composto.valores.length; i++) {
+    for (let j = i + 1; j < composto.valores.length; j++) {
+      if (composto.valores[i].cod === composto.valores[j].cod) {
+        possuiDuplicatas = true;
+        break;
+      }
+    }
+    if (possuiDuplicatas) {
+      res.send({status: false, message: 'Existem produtos iguais, favor alterar!'})
+      return
+    }
+  }
+
+
+  const selectQuery = `Select "codigoSKU" from composto where "codigoSKU" = ${composto.codigoSKU} AND excluido = 0;`
+  client.query(selectQuery, (err, result) => {
+    if (!err) {
+      if (result.rowCount) {
         res.json({ status: false, message: 'Já existe cadastro com esse código!' })
       } else {
-        let insertQuery = `insert into composto ("codigoSKU", quantidade) VALUES (${composto.codigoSKU}, ${composto.valores[0].qtde});`
-
-        client.query(insertQuery, (err, result) => {
-          if (!err) {
+        let insertQuery = `insert into composto ("codigoSKU", quantidade) VALUES (${composto.codigoSKU}, ${composto.qntde})`
+        client.query(insertQuery, (err1, result1) => {
+          if (!err1) {
             const produtoQuery = `insert into produtos(nome, "codigoSKU", "dtValidade", quantidade, "pesoLiquido", "pesoBruto", marca, categoria_id, pcomposto)
               values ('${composto.nome}', ${composto.codigoSKU}, '${composto.dtValidade}', ${composto.qntde}, ${composto.pesoLiquido}, ${composto.pesoBruto}, '${composto.marca}', ${composto.categoria_id}, currval('"produtoComposto_id_seq"'::regclass))`
 
-            client.query(produtoQuery, (error, resultado) => {
-              if (!error) {
-                let compostoQuery = `insert into produto_composto (id_composto, id_produto) VALUES`
+            client.query(produtoQuery, (err2, result2) => {
+              if (!err2) {
+                let compostoQuery = `insert into produto_composto (id_composto, id_produto, quantidade) VALUES`
 
                 if (composto.valores.length) {
                   for (i = 0; i < composto.valores.length; i++) {
-                    compostoQuery += `(currval('"produtoComposto_id_seq"'::regclass), ${composto.valores[i].cod}),`;
+                    compostoQuery += `(currval('"produtoComposto_id_seq"'::regclass), ${composto.valores[i].cod}, ${composto.valores[i].qtde}),`;
                   }
                   compostoQuery = compostoQuery.slice(0, -1)
                 }
-               
-                client.query(compostoQuery, (e, r) => {
-                  if (!e) {
+                console.log(compostoQuery)
+                client.query(compostoQuery, (err3, result3) => {
+                  if (!err3) {
                     res.json({ status: true, message: 'Inserção feita com sucesso!' })
                   } else {
                     res.json({ status: false, message: 'Erro ao realizar o insert' })
                   }
                 })
               } else {
-                res.status(400).json({ status: false, message: 'Erro na inserção', debug: error.message });
+                res.status(400).json({ status: false, message: 'Erro na inserção', debug: err3.message });
               }
             })
           } else {
@@ -105,10 +117,10 @@ router.post('/cadastrocomposto', (req, res) => {
         })
       }
     } else {
+      console.log(err)
       res.status(404).end()
     }
   })
-
 })
 
 
@@ -118,9 +130,6 @@ router.get('/', (req, res) => {
 
   if (produto.composto == 0) {
     selectQuery += ` AND p.pcomposto = 0 `
-  }
-  if (produto.remover == 1) {
-    selectQuery += ` AND p.id NOT IN (${produto.idArray}) AND p.pcomposto = 0`
   }
 
   selectQuery += ` ORDER BY p.pcomposto, p.nome`;
@@ -137,7 +146,6 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
   const selectQuery = `SELECT p.nome, p.categoria_id categoria, cp.nome nomecategoria, p."codigoSKU" id, p."dtValidade", p.quantidade, p."pesoLiquido", p."pesoBruto", p.excluido, p.marca, p."dataCadastro" FROM produtos p inner join categorias cp on p.categoria_id = cp.id where p.excluido = 0 AND cp.excluido = 0 AND  p.id=${req.params.id}`
-  console.log(selectQuery)
   client.query(selectQuery, (err, result) => {
     if (!err) {
       res.json(result.rows);
@@ -150,8 +158,7 @@ router.get('/:id', (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const prod = req.body.produto;
-  let updateQuery = `update produtos set nome = '${prod.nome}',"dtValidade" = '${prod.dtValidade}', quantidade= ${prod.qtde}, "itensPCaixa" = ${prod.itensCaixa}, "pesoLiquido" = ${prod.liquido}, "pesoBruto" = ${prod.bruto}, marca = '${prod.marca}', tipo = ${prod.tipo}, "updatedAt" = now() where id=${req.params.id}`
-
+  let updateQuery = `update produtos set nome = '${prod.nome}',"dtValidade" = '${prod.dtValidade}', quantidade= ${prod.qtde}, "pesoLiquido" = ${prod.liquido}, "pesoBruto" = ${prod.bruto}, marca = '${prod.marca}', "updateAt" = now() where id=${req.params.id}`
   client.query(updateQuery, (err, result) => {
     if (!err) {
       res.json(prod)
@@ -164,16 +171,35 @@ router.put('/:id', async (req, res) => {
 })
 
 router.put('/delete/:id', (req, res) => {
-  let updateQuery = `update produtos set excluido = 1 where id = ${req.params.id}`
-  console.log(updateQuery)
-  client.query(updateQuery, (err, result) => {
-    if (!err) {
-      res.json({ status: true })
-    }
-    else {
-      res.json({ status: false, message: err.message });
+  let selectQuery = `select quantidade, pcomposto composto from produtos where id = ${req.params.id}`
+  client.query(selectQuery, (err1, result1) => {
+    if (result1.rows[0].quantidade == 0) {
+      let updateQuery = `update produtos set excluido = 1 where id = ${req.params.id}`
+      client.query(updateQuery, (err2, result2) => {
+        if (!err2) {
+          if (result1.rows[0].composto) {
+            let updateCompostoQuery = `update composto set excluido = 1 where id = ${result1.rows[0].composto}`
+            client.query(updateCompostoQuery, (err3, result3) => {
+              if (!err3) {
+                let removeProdutoCompostoQuery = `delete from produto_composto where id_composto = ${result1.rows[0].composto}`
+                client.query(removeProdutoCompostoQuery, (err4, result4) => {
+                  if (!err4) {
+                    res.json({ status: true, message: 'Produto removido com sucesso!' })
+                  }
+                })
+              }
+            })
+          }
+          else {
+            res.json({ status: false, message: 'Não foi possível excluir este produto', debug: err.message });
+          }
+        }
+      })
+    } else {
+      res.json({ status: false, message: 'Não foi possível excluir este produto pois a quantidade não está zerada!' })
     }
   })
+
   client.end;
 })
 

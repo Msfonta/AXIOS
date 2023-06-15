@@ -29,7 +29,6 @@ router.get('/', (req, res) => {
 })
 
 router.get('/:id', (req, res) => {
-    console.log('aquiii')
     const selectQuery = `SELECT id, nome, perm_usuarios, perm_produtos, perm_dashboard, perm_grupos, perm_grupos, excluido FROM grupos WHERE id = ${req.params.id} WHERE excluido = 0`
 
     client.query(selectQuery, (err, result) => {
@@ -44,10 +43,9 @@ router.get('/:id', (req, res) => {
 router.post('/cadastro', (req, res) => {
     const categoria = req.body
     const postQuery = `INSERT INTO categorias (nome, tipo) VALUES ('${categoria.nome}', ${categoria.tipo})`
-    console.log(postQuery)
+
     client.query(postQuery, (err, result) => {
         if (!err) {
-            console.log(result.rows)
             if (result.rowCount > 0) {
                 res.json({ status: true, message: 'Categoria criada com sucesso!' })
             }

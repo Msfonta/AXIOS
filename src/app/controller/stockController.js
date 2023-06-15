@@ -11,8 +11,7 @@ require('dotenv').config()
 
 
 router.get('/', (req, res) => {
-    const selectQuery = `SELECT ce.id, p.nome nomeProduto, p.marca, ct.nome categoria, ce.operacao, ce."dataOperacao", ce.quantidade, u.nome nomeUsuario FROM "controleEstoque" ce inner join usuarios u  on u.id = ce.id_usuario inner join produtos p on p."codigoSKU" = ce.id_produto inner join categorias ct on ct.id = p.categoria_id ORDER BY ce."dataOperacao" desc;`
-
+    const selectQuery = `SELECT ce.id, p.nome nomeProduto, p.marca, ct.nome categoria, ce.operacao, ce."dataOperacao", ce.quantidade, u.nome nomeUsuario FROM "controleEstoque" ce inner join usuarios u  on u.id = ce.id_usuario inner join produtos p on p.id = ce.id_produto inner join categorias ct on ct.id = p.categoria_id ORDER BY ce."dataOperacao" desc;`
     client.query(selectQuery, (err, result) => {
         if (!err) {
             res.send(result.rows)
@@ -28,7 +27,7 @@ router.get('/produto', (req, res) => {
     let selectQuery = `SELECT ce.id, p.nome nomeProduto, p.marca, ct.nome categoria, ce.operacao, ce."dataOperacao", u.nome nomeUsuario 
                        FROM "controleEstoque" ce 
                        INNER JOIN usuarios u ON u.id = ce.id_usuario 
-                       INNER JOIN produtos p ON p."codigoSKU" = ce.id_produto 
+                       INNER JOIN produtos p ON p.id = ce.id_produto 
                        INNER JOIN categorias ct ON ct.id = p.categoria_id`;
 
     if (dados.busca) {
