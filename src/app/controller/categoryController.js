@@ -9,20 +9,13 @@ require('dotenv').config()
 // client.connect()
 
 router.get('/', (req, res) => {
-    const categoria = req.query
-    let getQuery = `select id, nome, tipo, case tipo when 1 then 'Prod. Simples' else 'Prod. Composto' end nometipo from categorias WHERE excluido = 0`
-
-    if (Object.entries(categoria).length != 0) {
-        getQuery += ` AND tipo = ${categoria.tipo}`
-    }
-
-    getQuery += ` ORDER BY ID, NOME`
+    let getQuery = `select id, nome from categorias WHERE excluido = 0 ORDER BY ID, NOME`
 
     client.query(getQuery, (err, result) => {
         if (!err) {
-            res.json(result.rows)
+            res.json({ status: true, data: result.rows})
         } else {
-            res.status(404).end()
+            res.json({ status: false, message: 'Erro ao buscar as categorias'})
         }
         client.end;
     })
@@ -42,7 +35,14 @@ router.get('/:id', (req, res) => {
 
 router.post('/cadastro', (req, res) => {
     const categoria = req.body
-    const postQuery = `INSERT INTO categorias (nome, tipo) VALUES ('${categoria.nome}', ${categoria.tipo})`
+
+    if (!categoria.nome) {
+        res.send({ status: false, message: 'O Nome está vazio, favor inserir' })
+        return
+    }
+
+    const postQuery = `INSERT INTO categorias (nome)`
+
 
     client.query(postQuery, (err, result) => {
         if (!err) {
@@ -50,7 +50,7 @@ router.post('/cadastro', (req, res) => {
                 res.json({ status: true, message: 'Categoria criada com sucesso!' })
             }
         } else {
-            res.status(404).end()
+            res.json({ status: false, message: 'Erro ao cadastar categoria'})
         }
     })
 })

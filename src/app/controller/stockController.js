@@ -64,13 +64,13 @@ router.put('/:id', (req, res) => {
 
     if (controle) {
         if (controle.operacao == 2) {
-            query = `UPDATE produtos set quantidade = quantidade + 1 WHERE "codigoSKU" = ${controle.id}`
+            query = `UPDATE produtos set quantidade = quantidade + 1 WHERE id = ${controle.id}`
         } else {
-            query = `UPDATE produtos set quantidade = quantidade - 1 WHERE "codigoSKU" = ${controle.id}`
+            query = `UPDATE produtos set quantidade = quantidade - 1 WHERE id = ${controle.id}`
         }
         const postQuery = `INSERT INTO "controleEstoque" (id_produto, operacao, quantidade, id_usuario) VALUES ('${controle.id}', ${controle.operacao}, (SELECT quantidade FROM produtos WHERE "codigoSKU" = ${controle.id})  , ${controle.usuario.id})`
         client.query(query, (err, result) => {
-            
+            console.log(query)
             if (!err) {
                 client.query(postQuery, (err, result) => {
                     if (!err) {

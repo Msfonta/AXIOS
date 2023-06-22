@@ -24,6 +24,10 @@ const verifyJWT = (req, res, next) => {
 
 router.post('/cadastro', async (req, res) => {
   const user = req.body;
+  if (!user.nome || !user.email || !hashedPassword) {
+    res.send({ status: false, message: 'Há valores vazios, favor inserir' })
+    return
+  }
   const hashedPassword = await bcrypt.hash(user.senha, 10)
   const selectQuery = `SELECT email FROM usuarios WHERE email = lower('${user.email}')`
   const insertQuery = `insert into usuarios(nome, email, senha) values (lower('${user.nome}'), lower('${user.email}'), '${hashedPassword}')`
@@ -37,8 +41,8 @@ router.post('/cadastro', async (req, res) => {
           if (!err) {
             let INSERT = `insert into usuarios_grupos (id_usuario, id_grupo) values (currval('usuarios_id_seq'::regclass) , ${user.grupo})`
             client.query(INSERT, (err, result) => {
-              if(!err) {
-                res.json({status: true})
+              if (!err) {
+                res.json({ status: true, message: 'Usuário inserido com sucesso!'})
               }
             })
           } else {
@@ -71,7 +75,7 @@ router.post('/login', (req, res) => {
         if (isValidPassword) {
           res.json({ status: isValidPassword, usuario: result.rows, token });
         } else {
-          res.json({status: false, message: 'Senha incorreta!'})
+          res.json({ status: false, message: 'Senha incorreta!' })
         }
       } else {
         res.json({ status: false, message: 'Não foi encontrado nenhum usuário com este email' })
@@ -97,14 +101,14 @@ router.get('/listarUsuarios', verifyJWT, (req, res) => {
 })
 
 router.get('/', (req, res) => {
-  client.query(`SELECT u.id, u.nome nome, u.email, g.nome grupo FROM usuarios u INNER JOIN usuarios_grupos ug ON ug.id_usuario = u.id INNER JOIN grupos g ON g.id = ug.id_grupo ORDER BY u.id, u.nome`, 
-  (err, result) => {
-    if (!err) {
-      res.send(result.rows)
-    } else {
-      res.status(404).end()
-    }
-  });
+  client.query(`SELECT u.id, u.nome nome, u.email, g.nome grupo, u.excluido FROM usuarios u INNER JOIN usuarios_grupos ug ON ug.id_usuario = u.id INNER JOIN grupos g ON g.id = ug.id_grupo ORDER BY u.id, u.nome`,
+    (err, result) => {
+      if (!err) {
+        res.send(result.rows)
+      } else {
+        res.status(404).end()
+      }
+    });
   client.end;
 })
 
@@ -121,7 +125,7 @@ router.get('/:id', (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const user = req.body;
-  
+
   let updateQuery = `update usuarios set nome = '${user.nome}', email = '${user.email}', "updatedAt" = now() `
 
   if (user.senha) {
@@ -134,7 +138,7 @@ router.put('/:id', async (req, res) => {
     if (!err) {
       let updateQuery2 = `update usuarios_grupos set id_grupo = ${user.grupo} WHERE id_usuario = ${user.id}`
       client.query(updateQuery2, (err, result) => {
-        if(!err){
+        if (!err) {
           res.json(user)
         } else {
           res.status(404).end()
@@ -150,7 +154,7 @@ router.put('/:id', async (req, res) => {
 
 router.put('/delete/:id', (req, res) => {
   let updateQuery = `update usuarios set excluido = 1, "updatedAt" = now() where id = ${req.params.id}`
-
+  console.log(updateQuery)
   client.query(updateQuery, (err, result) => {
     if (!err) {
       res.json({ status: true, message: 'Desabilitado com sucesso!' })

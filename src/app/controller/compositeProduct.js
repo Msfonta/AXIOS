@@ -62,7 +62,7 @@ router.put('/:id', (req, res) => {
 
     client.query(updateQuery, (err, result) => {
         if (!err) {
-            res.json({ status: true, message: 'Categoria alterada com sucesso!' })
+            res.json({ status: true, message: 'Quantidade alterada com sucesso!' })
         } else {
             res.status(404).end()
         }
@@ -75,31 +75,26 @@ router.delete('/delete/:id', (req, res) => {
 
     client.query(quantidadeQuery, (err, result) => {
         if (!err) {
-            if (result.rows[0].quantidade) {
-                res.json({ status: false, message: 'Não foi possível excluir este produto pois o mesmo não se encontra zerado no estoque! Favor zerar ele antes de qualquer operação!' })
-            } else {
+            const selectQuery = `SELECT sum(quantidade) quantidade from produto_composto where id_composto = ${req.params.id}`
 
-                const selectQuery = `SELECT sum(quantidade) quantidade from produto_composto where id_composto = ${req.params.id}`
+            client.query(selectQuery, (err1, res1) => {
+                if (!err1) {
+                    if (res1.rows[0].quantidade < 2) {
+                        res.json({ status: false, message: 'Não foi possível concluir esta operação, pois quantidade mínima dentro de um produto composto é de 2' })
+                    } else {
 
-                client.query(selectQuery, (err1, res1) => {
-                    if (!err1) {
-                        if (res1.rows[0].quantidade < 2) {
-                            res.json({ status: false, message: 'Não foi possível concluir esta operação, pois quantidade mínima dentro de um produto composto é de 2' })
-                        } else {
+                        const deleteProdutoQuery = `DELETE FROM produto_composto where id_composto = ${req.params.id} AND id_produto = ${composto.idProduto}`
 
-                            const deleteProdutoQuery = `DELETE FROM produto_composto where id_composto = ${req.params.id} AND id_produto = ${composto.idProduto}`
-
-                            client.query(deleteProdutoQuery, (error, resultado) => {
-                                if (!error) {
-                                    res.json({ status: true, message: 'Produto excluído com sucesso!' })
-                                } else {
-                                    res.json({ status: false, message: 'Erro ao excluir o produto!', debug: error.message })
-                                }
-                            })
-                        }
+                        client.query(deleteProdutoQuery, (error, resultado) => {
+                            if (!error) {
+                                res.json({ status: true, message: 'Produto excluído com sucesso!' })
+                            } else {
+                                res.json({ status: false, message: 'Erro ao excluir o produto!', debug: error.message })
+                            }
+                        })
                     }
-                })
-            }
+                }
+            })
         } else {
             res.json({ status: false, message: 'Erro no operação', debug: err.message })
         }
