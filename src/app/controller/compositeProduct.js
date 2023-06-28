@@ -43,10 +43,8 @@ router.get('/:id', (req, res) => {
 router.post('/cadastro', (req, res) => {
     const categoria = req.body
     const postQuery = `INSERT INTO categorias (nome, tipo) VALUES ('${categoria.nome}', ${categoria.tipo})`
-    console.log(postQuery)
     client.query(postQuery, (err, result) => {
         if (!err) {
-            console.log(result.rows)
             if (result.rowCount > 0) {
                 res.json({ status: true, message: 'Categoria criada com sucesso!' })
             }

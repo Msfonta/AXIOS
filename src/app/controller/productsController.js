@@ -37,7 +37,6 @@ router.get('/composto/:id', (req, res) => {
 router.post('/cadastro', async (req, res) => {
   const produto = req.body.produto;
   const selectQuery = `Select "codigoSKU" from composto where "codigoSKU" = ${produto.codigoSKU}`
-  console.log(selectQuery)
   client.query(selectQuery, (error, result) => {
     if (!error) {
       if (result.rows[0]) {
@@ -45,7 +44,6 @@ router.post('/cadastro', async (req, res) => {
       } else {
         const insertQuery = `insert into produtos(nome, "codigoSKU", "dtValidade", quantidade, "pesoLiquido", "pesoBruto", marca, categoria_id, pcomposto) 
         values ('${produto.nome}', ${produto.codigoSKU}, '${produto.dtValidade}', ${produto.quantidade},  ${produto.pesoLiquido}, ${produto.pesoBruto}, '${produto.marca}', ${produto.categoria_id}, 0)`
-        console.log(insertQuery)
         client.query(insertQuery, (err, result) => {
           if (!err) {
             res.json({ status: true })
@@ -104,7 +102,6 @@ router.post('/cadastrocomposto', (req, res) => {
                     for (i = 0; i < composto.valores.length; i++) {
                       compostoQuery += `(currval('"produtoComposto_id_seq"'::regclass), ${composto.valores[i].cod}, ${composto.valores[i].qtde}),`;
                     }
-                    compostoQuery = compostoQuery.slice(0, -1)
                   }
 
                   client.query(compostoQuery, (err3, result3) => {
@@ -166,99 +163,116 @@ router.get('/:id', (req, res) => {
 
 router.put('/:id', (req, res) => {
   const prod = req.body.produto;
-  let updateQuery = `update produtos set nome = '${prod.nome}',"dtValidade" = '${prod.dtValidade}', quantidade = ${prod.qtde}, "pesoLiquido" = ${prod.liquido}, "pesoBruto" = ${prod.bruto}, marca = '${prod.marca}', "updateAt" = now() where id=${req.params.id}`
-  client.query(updateQuery, (err, result) => {
-    if (!err) {
-      res.json({ status: true, message: 'Produto atualizado com sucesso!', produto: prod })
-    } else {
-      res.json({ status: false, message: 'Erro ao atualizar produto!', debug: err.message })
-    }
-  })
+  const inventario = JSON.parse(req.body.inventario)
+
+  if (inventario) {
+    res.json({ status: false, message: 'Inventário em progresso, não foi possível editar!' })
+  } else {
+    let updateQuery = `update produtos set nome = '${prod.nome}',"dtValidade" = '${prod.dtValidade}', quantidade = ${prod.qtde}, "pesoLiquido" = ${prod.liquido}, "pesoBruto" = ${prod.bruto}, marca = '${prod.marca}', "updateAt" = now() where id=${req.params.id}`
+    client.query(updateQuery, (err, result) => {
+      if (!err) {
+        res.json({ status: true, message: 'Produto atualizado com sucesso!', produto: prod })
+      } else {
+        res.json({ status: false, message: 'Erro ao atualizar produto!', debug: err.message })
+      }
+    })
+  }
 })
 
 router.put('/composto/:id', async (req, res) => {
   const prod = req.body.produto;
   const composto = req.body;
+  const inventario = JSON.parse(req.body.inventario)
   let possuiDuplicatas = false;
 
-  let updateQuery = `update produtos set nome = '${prod.nome}',"dtValidade" = '${prod.dtValidade}', quantidade = ${prod.qtde}, "pesoLiquido" = ${prod.liquido}, "pesoBruto" = ${prod.bruto}, marca = '${prod.marca}', "updateAt" = now() where id=${req.params.id}`
-  client.query(updateQuery, (err, result) => {
-    if (!err) {
-      let deleteProdutoQuery = `delete from produto_composto where id_composto = ${composto.idComposto}`;
-      client.query(deleteProdutoQuery, (err2, result2) => {
-        if (!err2) {
-          for (let i = 0; i < composto.valores.length; i++) {
-            for (let j = i + 1; j < composto.valores.length; j++) {
-              if (composto.valores[i].cod === composto.valores[j].cod) {
-                possuiDuplicatas = true;
-                break;
+
+  if (inventario) {
+    res.json({ status: false, message: 'Inventário em progresso, não foi possível editar!' })
+  } else {
+    let updateQuery = `update produtos set nome = '${prod.nome}',"dtValidade" = '${prod.dtValidade}', quantidade = ${prod.qtde}, "pesoLiquido" = ${prod.liquido}, "pesoBruto" = ${prod.bruto}, marca = '${prod.marca}', "updateAt" = now() where id=${req.params.id}`
+    client.query(updateQuery, (err, result) => {
+      if (!err) {
+        let deleteProdutoQuery = `delete from produto_composto where id_composto = ${composto.idComposto}`;
+        client.query(deleteProdutoQuery, (err2, result2) => {
+          if (!err2) {
+            for (let i = 0; i < composto.valores.length; i++) {
+              for (let j = i + 1; j < composto.valores.length; j++) {
+                if (composto.valores[i].cod === composto.valores[j].cod) {
+                  possuiDuplicatas = true;
+                  break;
+                }
+              }
+              if (possuiDuplicatas) {
+                res.send({ status: false, message: 'Existem produtos iguais, favor alterar!' })
+                return
               }
             }
-            if (possuiDuplicatas) {
-              res.send({ status: false, message: 'Existem produtos iguais, favor alterar!' })
-              return
-            }
-          }
-          let compostoQuery = `insert into produto_composto (id_composto, id_produto, quantidade) VALUES`
+            let compostoQuery = `insert into produto_composto (id_composto, id_produto, quantidade) VALUES`
 
-          if (composto.valores.length) {
-            for (i = 0; i < composto.valores.length; i++) {
-              compostoQuery += `(${composto.idComposto}, ${composto.valores[i].cod}, ${composto.valores[i].qtde}),`;
+            if (composto.valores.length) {
+              for (i = 0; i < composto.valores.length; i++) {
+                compostoQuery += `(${composto.idComposto}, ${composto.valores[i].cod}, ${composto.valores[i].qtde}),`;
+              }
+              compostoQuery = compostoQuery.slice(0, -1)
             }
-            compostoQuery = compostoQuery.slice(0, -1)
+            client.query(compostoQuery, (err3, result3) => {
+              if (!err3) {
+                res.json({ status: true, prod })
+              } else {
+                res.json({ status: false, message: 'Erro ao atualizar o produto', debug: err3.message })
+              }
+            })
+          } else {
           }
-          console.log(compostoQuery)
-          client.query(compostoQuery, (err3, result3) => {
-            if (!err3) {
-              res.json({ status: true, prod })
-            } else {
-              res.json({ status: false, message: 'Erro ao atualizar o produto', debug: err3.message })
-            }
-          })
-        } else {
-        }
-      })
-    }
-    else {
-      res.json({ status: false, message: err.message });
-    }
-  })
+        })
+      }
+      else {
+        res.json({ status: false, message: err.message });
+      }
+    })
+  }
   client.end;
 })
 
 router.put('/delete/:id', (req, res) => {
-  let selectQuery = `select quantidade, pcomposto composto from produtos where id = ${req.params.id}`
-  client.query(selectQuery, (err1, result1) => {
-    if (result1.rows[0].quantidade == 0) {
-      let updateQuery = `update produtos set excluido = 1 where id = ${req.params.id}`
-      client.query(updateQuery, (err2, result2) => {
-        if (!err2) {
-          if (result1.rows[0].quantidade) {
-            let updateCompostoQuery = `update composto set excluido = 1 where id = ${result1.rows[0].composto}`
-            client.query(updateCompostoQuery, (err3, result3) => {
-              if (!err3) {
-                let deleteCompostoQuery = `delete from produto_composto where id_composto = ${result1.rows[0].composto}`
-                client.query(deleteCompostoQuery, (err4, result4) => {
-                  if (!err4) {
-                    res.json({ status: true, message: 'Produto excluído com sucesso!' })
-                  }
-                })
-              } else {
-                res.json({ status: false, message: 'Erro ao excuir produto!' })
-              }
-            })
+  const inventario = JSON.parse(req.body.inventario)
+
+  if (inventario) {
+    res.json({ status: false, message: 'Inventário em progresso, não foi possível excluir!' })
+  } else {
+    let selectQuery = `select quantidade, pcomposto composto from produtos where id = ${req.params.id}`
+    client.query(selectQuery, (err1, result1) => {
+      if (result1.rows[0].quantidade == 0) {
+        let updateQuery = `update produtos set excluido = 1 where id = ${req.params.id}`
+        client.query(updateQuery, (err2, result2) => {
+          if (!err2) {
+            if (result1.rows[0].quantidade) {
+              let updateCompostoQuery = `update composto set excluido = 1 where id = ${result1.rows[0].composto}`
+              client.query(updateCompostoQuery, (err3, result3) => {
+                if (!err3) {
+                  let deleteCompostoQuery = `delete from produto_composto where id_composto = ${result1.rows[0].composto}`
+                  client.query(deleteCompostoQuery, (err4, result4) => {
+                    if (!err4) {
+                      res.json({ status: true, message: 'Produto excluído com sucesso!' })
+                    }
+                  })
+                } else {
+                  res.json({ status: false, message: 'Erro ao excuir produto!' })
+                }
+              })
+            }
+            else {
+              res.json({ status: false, message: 'Não foi possível excluir este produto' });
+            }
+          } else {
+            res.json({ status: false, message: 'Erro ao excluir produto!', })
           }
-          else {
-            res.json({ status: false, message: 'Não foi possível excluir este produto' });
-          }
-        } else {
-          res.json({ status: false, message: 'Erro ao excluir produto!', })
-        }
-      })
-    } else {
-      res.json({ status: false, message: 'Não foi possível excluir este produto pois a quantidade não está zerada!' })
-    }
-  })
+        })
+      } else {
+        res.json({ status: false, message: 'Não foi possível excluir este produto pois a quantidade não está zerada!' })
+      }
+    })
+  }
 
   client.end;
 })

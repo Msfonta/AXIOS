@@ -60,55 +60,37 @@ router.get('/produto', (req, res) => {
 
 router.put('/:id', (req, res) => {
     const controle = req.body
+    const inventario = JSON.parse(req.body.inventario)
     let query;
 
-    if (controle) {
-        if (controle.operacao == 2) {
-            query = `UPDATE produtos set quantidade = quantidade + 1 WHERE id = ${controle.id}`
-        } else {
-            query = `UPDATE produtos set quantidade = quantidade - 1 WHERE id = ${controle.id}`
-        }
-        const postQuery = `INSERT INTO "controleEstoque" (id_produto, operacao, quantidade, id_usuario) VALUES ('${controle.id}', ${controle.operacao}, (SELECT quantidade FROM produtos WHERE "codigoSKU" = ${controle.id})  , ${controle.usuario.id})`
-        client.query(query, (err, result) => {
-            console.log(query)
-            if (!err) {
-                client.query(postQuery, (err, result) => {
-                    if (!err) {
-                        res.json({ status: true, message: 'Operação concluida com sucesso!' })
-                    } else {
-                        res.send(err).status(404)
-                    }
-                })
+    if (inventario) {
+        res.json({ status: false, message: 'Inventário em progresso, não foi possível editar!' })
+    } else {
+        if (controle) {
+            if (controle.operacao == 2) {
+                query = `UPDATE produtos set quantidade = quantidade + 1 WHERE id = ${controle.id}`
             } else {
-                res.status(404).end()
+                query = `UPDATE produtos set quantidade = quantidade - 1 WHERE id = ${controle.id}`
             }
-        })
+            const postQuery = `INSERT INTO "controleEstoque" (id_produto, operacao, quantidade, id_usuario) VALUES ('${controle.id}', ${controle.operacao}, (SELECT quantidade FROM produtos WHERE "codigoSKU" = ${controle.id})  , ${controle.usuario.id})`
+            client.query(query, (err, result) => {
+                console.log(query)
+                if (!err) {
+                    client.query(postQuery, (err, result) => {
+                        if (!err) {
+                            res.json({ status: true, message: 'Operação concluida com sucesso!' })
+                        } else {
+                            res.send(err).status(404)
+                        }
+                    })
+                } else {
+                    res.status(404).end()
+                }
+            })
+        }
     }
 })
 
-router.put('/delete/:id', (req, res) => {
-    const deleteQuery = `UPDATE grupos set excluido = 1, "dataExclusao" = now() WHERE id = ${req.params.id}`
-
-    client.query(deleteQuery, (err, result) => {
-        if (!err) {
-            res.json({ status: true, message: 'Grupo excluido com sucesso!' })
-        } else {
-            res.status(404).end()
-        }
-    })
-})
-
-router.put('/activate/:id', (req, res) => {
-    const deleteQuery = `UPDATE grupos set excluido = 0, "dataExclusao" = now() WHERE id = ${req.params.id}`
-
-    client.query(deleteQuery, (err, result) => {
-        if (!err) {
-            res.json({ status: true, message: 'Grupo reativado com sucesso!' })
-        } else {
-            res.status(404).end()
-        }
-    })
-})
 
 router.get('/relatorio', (req, res) => {
     const dados = req.query;
@@ -117,7 +99,7 @@ router.get('/relatorio', (req, res) => {
     let selectQuery = `SELECT ce.id, p.nome nomeProduto, p.marca, ct.nome categoria, case operacao when 1 then 'Saida' else 'Entrada' end operacao, TO_CHAR(ce."dataOperacao", 'dd/mm/yyyy HH:MI') dataOperacao, u.nome nomeUsuario 
                        FROM "controleEstoque" ce 
                        INNER JOIN usuarios u ON u.id = ce.id_usuario 
-                       INNER JOIN produtos p ON p."codigoSKU" = ce.id_produto 
+                       INNER JOIN produtos p ON p.id = ce.id_produto 
                        INNER JOIN categorias ct ON ct.id = p.categoria_id`;
 
     if (dados.busca) {
@@ -137,7 +119,6 @@ router.get('/relatorio', (req, res) => {
     }
 
     selectQuery += ` ORDER BY ce."dataOperacao" desc`;
-
     client.query(selectQuery, (err, result) => {
         if (!err) {
             ejs.renderFile("./views/estoque/estoque.ejs", { dados: result.rows, dt_inicial: dados.dataInicial, dt_final: dados.dataFinal, imageLogo }, (err, html) => {

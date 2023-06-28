@@ -3,7 +3,6 @@
 const authPage = (permissao) => {
     return (req, res, next) => {
         const userRole = req.body.cargo
-        console.log(userRole)
         if (permissao.includes(userRole)) {
             next()
         } else {

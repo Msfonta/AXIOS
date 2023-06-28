@@ -56,7 +56,7 @@ router.post('/cadastro', async (req, res) => {
 })
 
 router.post('/login', (req, res) => {
-  const user = req.body;
+  const user = req.body.usuario;
   const selectQuery = `SELECT u.id, u.nome, u.senha, u.email, ug.id_grupo FROM usuarios u
   INNER JOIN usuarios_grupos ug 
   ON ug.id_usuario = u.id
@@ -71,7 +71,6 @@ router.post('/login', (req, res) => {
         const id = result.rows[0].id
         const token = jwt.sign({ id }, process.env.SECRET_KEY, { expiresIn: 3000 })
         const isValidPassword = await bcrypt.compare(user.senha, senha)
-
         if (isValidPassword) {
           res.json({ status: isValidPassword, usuario: result.rows, token });
         } else {
@@ -154,7 +153,6 @@ router.put('/:id', async (req, res) => {
 
 router.put('/delete/:id', (req, res) => {
   let updateQuery = `update usuarios set excluido = 1, "updatedAt" = now() where id = ${req.params.id}`
-  console.log(updateQuery)
   client.query(updateQuery, (err, result) => {
     if (!err) {
       res.json({ status: true, message: 'Desabilitado com sucesso!' })
