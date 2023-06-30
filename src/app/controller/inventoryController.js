@@ -62,7 +62,14 @@ router.get('/', (req, res) => {
 
     client.query(getInventarioQuery, (err, result) => {
         if (!err) {
-            res.json({ status: true, message: 'Lista gerada com sucesso!', data: result.rows })
+            const statusInventarioQuery = `SELECT status FROM status_inventario ORDER BY "dataFim" desc LIMIT 1`
+            client.query(statusInventarioQuery, (err1, result1) => {
+                if(!err1){
+                    res.json({ status: true, message: result.rows, status_inv: result1.rows[0]})
+                } else {
+                    res.json({ status: false, message: 'Erro ao buscar o status do inventario'})
+                }
+            })
         } else {
             res.json({ status: false, message: 'Erro ao gerar lista!' })
         }
@@ -126,9 +133,6 @@ router.post('/finalizar', (req, res) => {
             res.json({ status: false, message: 'erro' })
         }
     })
-
-
-
 
 })
 
