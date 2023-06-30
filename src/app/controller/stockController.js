@@ -14,9 +14,9 @@ router.get('/', (req, res) => {
     const selectQuery = `SELECT ce.id, p.nome nomeProduto, p.marca, ct.nome categoria, ce.operacao, ce."dataOperacao", ce.quantidade, u.nome nomeUsuario FROM "controleEstoque" ce inner join usuarios u  on u.id = ce.id_usuario inner join produtos p on p.id = ce.id_produto inner join categorias ct on ct.id = p.categoria_id ORDER BY ce."dataOperacao" desc;`
     client.query(selectQuery, (err, result) => {
         if (!err) {
-            res.send(result.rows)
+            res.json({ status: true, message: result.rows})
         } else {
-            res.status(404).end()
+            res.json({ status: false, message: 'Erro ao buscar dados'})
         }
     })
 })
@@ -62,7 +62,7 @@ router.put('/:id', (req, res) => {
     const controle = req.body
     const inventario = JSON.parse(req.body.inventario)
     let query;
-
+    console.log(req.body)
     if (inventario) {
         res.json({ status: false, message: 'Inventário em progresso, não foi possível editar!' })
     } else {
@@ -73,6 +73,7 @@ router.put('/:id', (req, res) => {
                 query = `UPDATE produtos set quantidade = quantidade - 1 WHERE id = ${controle.id}`
             }
             const postQuery = `INSERT INTO "controleEstoque" (id_produto, operacao, quantidade, id_usuario) VALUES ('${controle.id}', ${controle.operacao}, (SELECT quantidade FROM produtos WHERE "codigoSKU" = ${controle.id})  , ${controle.usuario.id})`
+            console.log(postQuery)
             client.query(query, (err, result) => {
                 console.log(query)
                 if (!err) {
@@ -80,7 +81,7 @@ router.put('/:id', (req, res) => {
                         if (!err) {
                             res.json({ status: true, message: 'Operação concluida com sucesso!' })
                         } else {
-                            res.send(err).status(404)
+                            res.json({ status: false, message: 'Erro ao inserir o dado!'})
                         }
                     })
                 } else {

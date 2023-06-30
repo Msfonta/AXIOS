@@ -1,5 +1,6 @@
 const express = require('express')
 const app = express();
+const path = require('path')
 const client = require('./src/app/database/database')
 const bodyParser = require('body-parser')
 const cors = require('cors')
@@ -14,9 +15,18 @@ const inventoryController = require('./src/app/controller/inventoryController')
 app.use(cors())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
-app.listen(3000, function () {
-    console.log('rodando na porta 3000')
-})
+
+
+const publicPath = path.join('C:/users/MHR-ENG05/Desktop/projetoMHR');
+app.use(express.static(publicPath));
+// app.get('/', (req, res) => {
+//     res.sendFile(path.join(publicPath, 'index.html'));
+//   });
+
+  const port = 3000;
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`Servidor rodando em http://localhost:${port}`);
+  });
 
 app.set('view engine', 'ejs')
 

@@ -13,25 +13,14 @@ router.get('/', (req, res) => {
 
     client.query(getQuery, (err, result) => {
         if (!err) {
-            res.json({ status: true, data: result.rows})
+            res.json({ status: true, data: result.rows })
         } else {
-            res.json({ status: false, message: 'Erro ao buscar as categorias'})
+            res.json({ status: false, message: 'Erro ao buscar as categorias' })
         }
         client.end;
     })
 })
 
-router.get('/:id', (req, res) => {
-    const selectQuery = `SELECT id, nome, perm_usuarios, perm_produtos, perm_dashboard, perm_grupos, perm_grupos, excluido FROM grupos WHERE id = ${req.params.id} WHERE excluido = 0`
-
-    client.query(selectQuery, (err, result) => {
-        if (!err) {
-            res.send(result.rows)
-        } else {
-            res.status(404).end()
-        }
-    })
-})
 
 router.post('/cadastro', (req, res) => {
     const categoria = req.body
@@ -41,16 +30,24 @@ router.post('/cadastro', (req, res) => {
         return
     }
 
-    const postQuery = `INSERT INTO categorias (nome)`
-
-
-    client.query(postQuery, (err, result) => {
-        if (!err) {
-            if (result.rowCount > 0) {
-                res.json({ status: true, message: 'Categoria criada com sucesso!' })
+    const selectQuery = `SELECT nome from categorias WHERE excluido = 0 AND LOWER(nome) = LOWER('${categoria.nome}')`
+    console.log(selectQuery)
+    client.query(selectQuery, (err1, result1) => {
+        if (!err1) {
+            console.log(result1.rows)
+            if (result1.rows[0]) {
+                res.json({ status: true, message: 'Já existe este nome de categoria, favor alterar!' })
+            } else {
+                const postQuery = `INSERT INTO categorias (nome) VALUES ('${categoria.nome}')`
+                console.log(postQuery)
+                client.query(postQuery, (err, result) => {
+                    if (!err) {
+                        res.json({ status: true, message: 'Categoria criada com sucesso!' })
+                    } else {
+                        res.json({ status: false, message: 'Erro ao cadastar categoria' })
+                    }
+                })
             }
-        } else {
-            res.json({ status: false, message: 'Erro ao cadastar categoria'})
         }
     })
 })

@@ -23,8 +23,9 @@ const verifyJWT = (req, res, next) => {
 
 
 router.post('/cadastro', async (req, res) => {
-  const user = req.body;
-  if (!user.nome || !user.email || !hashedPassword) {
+  const user = req.body.usuario;
+  console.log(user)
+  if (!user.nome || !user.email || !user.senha) {
     res.send({ status: false, message: 'Há valores vazios, favor inserir' })
     return
   }
@@ -42,11 +43,11 @@ router.post('/cadastro', async (req, res) => {
             let INSERT = `insert into usuarios_grupos (id_usuario, id_grupo) values (currval('usuarios_id_seq'::regclass) , ${user.grupo})`
             client.query(INSERT, (err, result) => {
               if (!err) {
-                res.json({ status: true, message: 'Usuário inserido com sucesso!'})
+                res.json({ status: true, message: 'Usuário inserido com sucesso!' })
               }
             })
           } else {
-            res.status(400).json({ status: false, message: 'Erro na inserção', debug: err.message });
+            res.json({ status: false, message: 'Erro na inserção', debug: err.message });
           }
         })
       }
@@ -57,7 +58,7 @@ router.post('/cadastro', async (req, res) => {
 
 router.post('/login', (req, res) => {
   const user = req.body.usuario;
-  const selectQuery = `SELECT u.id, u.nome, u.senha, u.email, ug.id_grupo FROM usuarios u
+  const selectQuery = `SELECT u.id, u.nome, u.senha, u.email FROM usuarios u
   INNER JOIN usuarios_grupos ug 
   ON ug.id_usuario = u.id
   INNER JOIN grupos g
@@ -72,7 +73,7 @@ router.post('/login', (req, res) => {
         const token = jwt.sign({ id }, process.env.SECRET_KEY, { expiresIn: 3000 })
         const isValidPassword = await bcrypt.compare(user.senha, senha)
         if (isValidPassword) {
-          res.json({ status: isValidPassword, usuario: result.rows, token });
+          res.json({ status: isValidPassword, usuario: { id: result.rows[0].id, email: result.rows[0].email, senha: result.rows[0].senha, nome: result.rows[0].nome }, token });
         } else {
           res.json({ status: false, message: 'Senha incorreta!' })
         }
@@ -80,7 +81,7 @@ router.post('/login', (req, res) => {
         res.json({ status: false, message: 'Não foi encontrado nenhum usuário com este email' })
       }
     } else {
-      res.status(400).json({ status: false, message: 'SQL incorreto', debug: err.message })
+      res.json({ status: false, message: 'SQL incorreto', debug: err.message })
     }
   });
   client.end;
@@ -99,27 +100,41 @@ router.get('/listarUsuarios', verifyJWT, (req, res) => {
   client.end;
 })
 
+router.get('/permissao', (req, res) => {
+  const user = req.query
+  console.log(user)
+  const selectQuery = `SELECT id_grupo, g.nome, g.perm_usuarios, g.perm_produtos, g.perm_grupos, g.perm_inventario, g.perm_controle, g.perm_categorias FROM usuarios_grupos ug inner join grupos g on g.id = ug.id_grupo INNER JOIN usuarios u ON u.id = ug.id_usuario WHERE u.email = '${user.email}' AND u.senha = '${user.senha}'`
+  console.log(selectQuery)
+  client.query(selectQuery, (err, result) => {
+    if (!err) {
+      res.json({ status: true, message: result.rows })
+    }
+  })
+})
+
 router.get('/', (req, res) => {
-  client.query(`SELECT u.id, u.nome nome, u.email, g.nome grupo, u.excluido FROM usuarios u INNER JOIN usuarios_grupos ug ON ug.id_usuario = u.id INNER JOIN grupos g ON g.id = ug.id_grupo ORDER BY u.id, u.nome`,
-    (err, result) => {
-      if (!err) {
-        res.send(result.rows)
-      } else {
-        res.status(404).end()
-      }
-    });
-  client.end;
+  const userQuery = `SELECT u.id, u.nome nome, u.email, g.nome grupo, ug.id_grupo, u.excluido FROM usuarios u INNER JOIN usuarios_grupos ug ON ug.id_usuario = u.id INNER JOIN grupos g ON g.id = ug.id_grupo ORDER BY u.id, u.nome`
+  console.log(userQuery)
+  client.query(userQuery, (err, result) => {
+    if (!err) {
+      res.json({ status: true, message: result.rows })
+    } else {
+      res.json({ status: false, message: 'Erro ao buscar os usuários' })
+    }
+  });
 })
 
 router.get('/:id', (req, res) => {
-  client.query(`SELECT u.id, u.nome nome, u.email, g.id grupo FROM usuarios u INNER JOIN usuarios_grupos ug ON ug.id_usuario = u.id INNER JOIN grupos g ON g.id = ug.id_grupo where u.id=${req.params.id}`, (err, result) => {
+  const userQuery = `SELECT u.id, u.nome nome, u.email, g.id grupo FROM usuarios u INNER JOIN usuarios_grupos ug ON ug.id_usuario = u.id INNER JOIN grupos g ON g.id = ug.id_grupo where u.id=${req.params.id}`
+  console.log(req.query)
+  console.log(userQuery)
+  client.query(userQuery, (err, result) => {
     if (!err) {
-      res.json(result.rows);
+      res.json({ status: true, message: result.rows });
     } else {
-      res.json({ status: false, message: err.message });
+      res.json({ status: false, message: 'Erro ao buscar dados do usuário!' });
     }
   });
-  client.end;
 })
 
 router.put('/:id', async (req, res) => {
@@ -132,17 +147,20 @@ router.put('/:id', async (req, res) => {
     updateQuery += `, senha = '${hashedPassword}' `
   }
   updateQuery += `where id = ${req.params.id}`
-
   client.query(updateQuery, (err, result) => {
     if (!err) {
-      let updateQuery2 = `update usuarios_grupos set id_grupo = ${user.grupo} WHERE id_usuario = ${user.id}`
-      client.query(updateQuery2, (err, result) => {
-        if (!err) {
-          res.json(user)
-        } else {
-          res.status(404).end()
-        }
-      })
+      if (user.grupo) {
+        let updateQuery2 = `update usuarios_grupos set id_grupo = ${user.grupo} WHERE id_usuario = ${user.id}`
+        client.query(updateQuery2, (err, result) => {
+          if (!err) {
+            res.json({status: true, user})
+          } else {
+            res.json({ status: false, message: 'Erro ao atualizar o usuário'})
+          }
+        })
+      } else {
+        res.json({ status: true, message: 'Usuário atualizado com sucesso!'})
+      }
     }
     else {
       res.json({ status: false, message: err.message });
