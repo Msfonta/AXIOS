@@ -31,15 +31,12 @@ router.post('/cadastro', (req, res) => {
     }
 
     const selectQuery = `SELECT nome from categorias WHERE excluido = 0 AND LOWER(nome) = LOWER('${categoria.nome}')`
-    console.log(selectQuery)
     client.query(selectQuery, (err1, result1) => {
         if (!err1) {
-            console.log(result1.rows)
             if (result1.rows[0]) {
                 res.json({ status: true, message: 'Já existe este nome de categoria, favor alterar!' })
             } else {
                 const postQuery = `INSERT INTO categorias (nome) VALUES ('${categoria.nome}')`
-                console.log(postQuery)
                 client.query(postQuery, (err, result) => {
                     if (!err) {
                         res.json({ status: true, message: 'Categoria criada com sucesso!' })

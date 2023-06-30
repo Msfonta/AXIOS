@@ -75,7 +75,6 @@ router.put('/:id', (req, res) => {
             const postQuery = `INSERT INTO "controleEstoque" (id_produto, operacao, quantidade, id_usuario) VALUES ('${controle.id}', ${controle.operacao}, (SELECT quantidade FROM produtos WHERE "codigoSKU" = ${controle.id})  , ${controle.usuario.id})`
             console.log(postQuery)
             client.query(query, (err, result) => {
-                console.log(query)
                 if (!err) {
                     client.query(postQuery, (err, result) => {
                         if (!err) {

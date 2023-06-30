@@ -45,7 +45,6 @@ router.get('/:id', (req, res) => {
 
 router.post('/', (req, res) => {
     const group = req.body.grupo
-    console.log(group)
 
     if (!group.nome) {
         res.send({ status: false, message: 'O nome está vazio, favor inserir!' })
@@ -54,13 +53,11 @@ router.post('/', (req, res) => {
     let nomeQuery = `SELECT nome FROM grupos WHERE excluido = 0 AND LOWER(nome) = LOWER('${group.nome}')`
     client.query(nomeQuery, (err1, result1) => {
         if (!err1) {
-            console.log(result1.rows)
             if (result1.rows[0]) {
                 res.send({ status: false, message: 'Este nome já existe, favor escolher outro!' })
                 return
             } else {
                 const postQuery = `INSERT INTO grupos (nome, perm_usuarios, perm_produtos, perm_grupos, perm_dashboard, perm_inventario, perm_controle, perm_categorias) VALUES ('${group.nome}', ${group.checkUsuarios}, ${group.checkProdutos}, ${group.checkGrupoUsuarios}, ${group.checkDashboard}, ${group.checkInventario}, ${group.checkControle}, ${group.checkCategorias})`
-                console.log(postQuery)
                 client.query(postQuery, (err, result) => {
                     if (!err) {
                         res.json({ status: true, message: 'Grupo criado com sucesso!' })

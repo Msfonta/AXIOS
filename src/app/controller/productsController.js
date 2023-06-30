@@ -23,7 +23,6 @@ const verifyJWT = (req, res, next) => {
 
 router.get('/composto/:id', (req, res) => {
   const selectQuery = `SELECT p.nome, p."codigoSKU", p.id idproduto, pc.quantidade, c.id FROM produto_composto pc inner join produtos p on p.id = pc.id_produto inner join composto c on c.id = pc.id_composto where pc.id_composto = ${req.params.id}`
-  console.log(selectQuery)
   client.query(selectQuery, (err, result) => {
     if (!err) {
       res.send(result.rows)
@@ -189,7 +188,6 @@ router.put('/composto/:id', async (req, res) => {
   if (inventario) {
     res.json({ status: false, message: 'Inventário em progresso, não foi possível editar!' })
   } else {
-    console.log(prod.qtde)
     if(!prod.qtde){
       let updateQuery = `update produtos set nome = '${prod.nome}',"dtValidade" = '${prod.dtValidade}', quantidade = ${prod.qtde}, "pesoLiquido" = ${prod.liquido}, "pesoBruto" = ${prod.bruto}, marca = '${prod.marca}', "updateAt" = now() where id=${req.params.id}`
       client.query(updateQuery, (err, result) => {
@@ -242,7 +240,6 @@ router.put('/composto/:id', async (req, res) => {
 
 router.put('/delete/:id', (req, res) => {
  const inventario = req.body.inventario ? JSON.parse(req.body.inventario) : 0
- console.log(inventario)
 
   if (inventario) {
     res.json({ status: false, message: 'Inventário em progresso, não foi possível excluir!' })
